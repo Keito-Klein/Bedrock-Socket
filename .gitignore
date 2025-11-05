@@ -1,0 +1,7 @@
+# Ignore folders
+node_modules/
+bin/
+Bedrock Server/
+
+# npm lockfile
+package-lock.json
