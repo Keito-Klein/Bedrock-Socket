@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { spawn, execSync } = require("child_process");
 const WebSocket = require("ws");
 const extract = require("extract-zip");
@@ -16,10 +17,25 @@ async function start() {
 
     //Put chat logger
     serverProperties = fs.readFileSync("./Bedrock Server/server.properties", "utf8");
-    errLogger = serverProperties.replace(/^content-log-console-output-enabled=false/m,
-  "content-log-console-output-enabled=true");
-    const worldName = serverProperties.match(/level-name=(.*)/)[1];
-    fs.writeFileSync("./Bedrock Server/server.properties", errLogger, "utf8");
+    const startup = serverProperties.replace(/^content-log-console-output-enabled=false/m, `content-log-console-output-enabled=${process.env.LOGGER === 'true' ? 'true' : 'false'}`)
+        .replace(/^server-name=.*$/m, `server-name=${process.env.SERVER_NAME || "Bedrock Server"}`)
+        .replace(/^gamemode=.*$/m, `gamemode=${process.env.GAME_MODE || "survival"}`)
+        .replace(/^difficulty=.*$/m, `difficulty=${process.env.DIFFICULTY || "normal"}`)
+        .replace(/^allow-cheats=.*$/m, `allow-cheats=${process.env.CHEATS || "false"}`)
+        .replace(/^server-port=.*$/m, `server-port=${process.env.BEDROCK_PORT || 19132}`)
+        .replace(/^level-name=.*$/m, `level-name=${process.env.WORLD_NAME || "Bedrock Level"}`);
+
+        if (/^emit-server-telemetry=.*$/m.test(serverProperties)) {
+            serverProperties = serverProperties.replace(
+                /^emit-server-telemetry=.*$/m,
+                `emit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`
+            );
+        } else {
+            serverProperties += `\nemit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`;
+        }
+
+    fs.writeFileSync("./Bedrock Server/server.properties", startup, "utf8");
+    const worldName = serverProperties.match(/^level-name=(.*)$/m)[1];
     if(!fs.existsSync(`./Bedrock Server/worlds/${worldName}/behavior_packs`)) {
         fs.mkdirSync(`./Bedrock Server/worlds/${worldName}/behavior_packs`, { recursive: true });
     }
