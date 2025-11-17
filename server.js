@@ -8,6 +8,7 @@ const path = require("path");
 const { autoUpdate } = require("./lib/auto-update.js");
 const port = process.env.WEBSOCKET_PORT || 3000;
 const auto_update = process.env.AUTO_UPDATE === 'true' || false;
+let idle = false;
 
 /*=============[ CREATED BY MiKako Sou ]=============*/
 
@@ -23,7 +24,7 @@ async function start() {
         .replace(/^difficulty=.*$/m, `difficulty=${process.env.DIFFICULTY || "normal"}`)
         .replace(/^allow-cheats=.*$/m, `allow-cheats=${process.env.CHEATS || "false"}`)
         .replace(/^server-port=.*$/m, `server-port=${process.env.BEDROCK_PORT || 19132}`)
-        .replace(/^level-name=.*$/m, `level-name=${process.env.WORLD_NAME || "Bedrock Level"}`);
+        .replace(/^level-name=.*$/m, `level-name=${process.env.WORLD_NAME || "Bedrock level"}`);
 
         if (/^emit-server-telemetry=.*$/m.test(serverProperties)) {
             serverProperties = serverProperties.replace(
@@ -139,7 +140,7 @@ async function start() {
         
         clients.forEach(ws => {
             if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data.toString());
+                if (idle) ws.send(data.toString());
             }
         });
     });
