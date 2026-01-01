@@ -7,7 +7,7 @@ const os = require("os");
 const path = require("path");
 const { autoUpdate } = require("./lib/auto-update.js");
 const port = process.env.WEBSOCKET_PORT || 3000;
-const auto_update = process.env.AUTO_UPDATE === 'true' || false;
+const auto_update = process.env.AUTO_UPDATER === 'true' || false;
 let idle = false;
 
 /*=============[ CREATED BY MiKako Sou ]=============*/
