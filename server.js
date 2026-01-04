@@ -12,6 +12,10 @@ let idle = false;
 
 /*=============[ CREATED BY MiKako Sou ]=============*/
 
+function heartBeat() {
+    this.isAlive = true;
+}
+
 async function start() {
     //Auto Update
     if (auto_update) await autoUpdate();
@@ -149,10 +153,13 @@ async function start() {
         console.error(`Error: ${data}`);
     });
     
-    wss.on("connection", (ws) => {
-        console.log("Client connected");
+    wss.on("connection", (ws, req) => {
+        console.log("Client connected: " + req.socket.remoteAddress);
         clients.add(ws);
     
+        ws.isAlive = true;
+        ws.on('pong', heartBeat);
+
         ws.on("message", (message) => {
             console.log(`Received: ${message}`);
     
@@ -163,10 +170,29 @@ async function start() {
             console.log("Client disconnected");
             clients.delete(ws);
         });
+
+        ws.on("error", (error) => {
+            console.error("WebSocket error:", error.message);
+        });
     });
+
+    const interval = setInterval(() => {
+        wss.clients.forEach((ws) => {
+            if(ws.isAlive === false) {
+                console.log("Terminating unresponsive client");
+                return ws.terminate();
+            }
+            
+            ws.isAlive = false;
+            ws.ping();
+        })
+    }, Number(process.env.HEARTBEAT_INTERVAL) || 45000);
+    
+    wss.on("close", () => {
+        clearInterval(interval);
+    })
     
     console.log("WebSocket running on port: " + port);
-    
 }
 
 start();
