@@ -12,10 +12,6 @@ let idle = false;
 
 /*=============[ CREATED BY MiKako Sou ]=============*/
 
-function heartBeat() {
-    this.isAlive = true;
-}
-
 async function start() {
     //Auto Update
     if (auto_update) await autoUpdate();
@@ -91,7 +87,7 @@ async function start() {
         bhData = [
             {
                 "pack_id" : "7e58bedb-07d8-40f6-826f-e3d113c0fbe6",
-		        "version" : [ 1, 0, 0 ]
+                "version" : [ 1, 0, 0 ]
             }
         ]
         fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/world_behavior_packs.json`, JSON.stringify(bhData, null, 2))
@@ -120,6 +116,10 @@ async function start() {
     // Setup WebSocket server
     const wss = new WebSocket.Server({ port });
     const clients = new Set();
+
+    function heartBeat() {
+        this.isAlive = true;
+    }
     
     bds.stdout.on("data", (data) => {
         console.log(`BDS: ${data}`);
@@ -144,7 +144,7 @@ async function start() {
         
         clients.forEach(ws => {
             if (ws.readyState === WebSocket.OPEN) {
-                if (idle) ws.send(data.toString());
+                ws.send(data.toString());
             }
         });
     });
@@ -182,7 +182,6 @@ async function start() {
                 console.log("Terminating unresponsive client");
                 return ws.terminate();
             }
-            
             ws.isAlive = false;
             ws.ping();
         })
