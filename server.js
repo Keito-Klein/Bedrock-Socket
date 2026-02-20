@@ -130,7 +130,7 @@ async function start() {
         if(input.startsWith("[BACKUP]")) {
             clients.forEach(ws => {
                 if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(input.toString());
+                    ws.send(input);
                 }
             });
         }else {
