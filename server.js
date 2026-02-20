@@ -2,6 +2,7 @@ require("dotenv").config();
 const { spawn, execSync } = require("child_process");
 const WebSocket = require("ws");
 const extract = require("extract-zip");
+const readline = require("readline");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -116,6 +117,21 @@ async function start() {
     // Setup WebSocket server
     const wss = new WebSocket.Server({ port });
     const clients = new Set();
+
+    //Setup Console Input
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    })
+
+    rl.on("line", (input) => {
+        if(!input) return;
+
+        console.info("[EXECUTE]", input)
+        bds.stdin.write(input + "\n")
+    })
+
+
 
     function heartBeat() {
         this.isAlive = true;
