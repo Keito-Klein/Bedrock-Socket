@@ -127,8 +127,16 @@ async function start() {
     rl.on("line", (input) => {
         if(!input) return;
 
-        console.info("[EXECUTE]", input)
-        bds.stdin.write(input + "\n")
+        if(input.startsWith("[BACKUP]")) {
+            clients.forEach(ws => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(input.toString());
+                }
+            });
+        }else {
+            console.info("[EXECUTE]", input)
+            bds.stdin.write(input + "\n")
+        }
     })
 
 
