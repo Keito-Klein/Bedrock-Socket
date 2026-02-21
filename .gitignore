@@ -5,3 +5,6 @@ Bedrock Server/
 
 # npm lockfile
 package-lock.json
+
+# test unit
+test.js
