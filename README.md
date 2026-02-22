@@ -7,8 +7,6 @@ This is a combination of <b>BDS server</b> and <b>websocket</b>. You can view ev
 - The minecraft system requirement based on [Minecraft official website](https://www.minecraft.net/en-us/download/server/bedrock#description-list-a-acdf7c9ba3).
 <br>
 
-> [!NOTE]
-> if you use Windows server or Linux server, that doesn't installed GUI library or shared libraries, ex: `libatk`, `libx11`. `libxcomposite`, and etc. You need apikey from [Browserless service](https://www.browserless.io/) to operate puppeter for auto update.
 
 ## Instalation
 install dependencies: 
