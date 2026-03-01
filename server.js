@@ -20,7 +20,7 @@ async function start() {
 
     //Put chat logger
     serverProperties = fs.readFileSync("./Bedrock Server/server.properties", "utf8");
-    const startup = serverProperties.replace(/^content-log-console-output-enabled=false/m, `content-log-console-output-enabled=${process.env.LOGGER === 'true' ? 'true' : 'false'}`)
+    let startup = serverProperties.replace(/^content-log-console-output-enabled=false/m, `content-log-console-output-enabled=${process.env.LOGGER === 'true' ? 'true' : 'false'}`)
         .replace(/^server-name=.*$/m, `server-name=${process.env.SERVER_NAME || "Bedrock Server"}`)
         .replace(/^gamemode=.*$/m, `gamemode=${process.env.GAME_MODE || "survival"}`)
         .replace(/^difficulty=.*$/m, `difficulty=${process.env.DIFFICULTY || "normal"}`)
@@ -28,19 +28,16 @@ async function start() {
         .replace(/^server-port=.*$/m, `server-port=${process.env.BEDROCK_PORT || 19132}`)
         .replace(/^level-name=.*$/m, `level-name=${process.env.WORLD_NAME || "Bedrock level"}`);
 
-        if (/^emit-server-telemetry=.*$/m.test(serverProperties)) {
-            serverProperties = serverProperties.replace(
+        if (/^emit-server-telemetry=.*$/m.test(startup)) {
+            startup = startup.replace(
                 /^emit-server-telemetry=.*$/m,
                 `emit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`
             );
-            fs.writeFileSync("./Bedrock Server/server.properties", serverProperties, "utf8");
         } else {
-            serverProperties += `\nemit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`;
-            fs.writeFileSync("./Bedrock Server/server.properties", serverProperties, "utf8");
+            startup += `\nemit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`;
         }
 
-    fs.writeFileSync("./Bedrock Server/server.properties", startup, "utf8");
-    const worldName = serverProperties.match(/^level-name=(.*)$/m)[1];
+    const worldName = startup.match(/^level-name=(.*)$/m)[1];
     if(!fs.existsSync(`./Bedrock Server/worlds/${worldName}/behavior_packs`)) {
         fs.mkdirSync(`./Bedrock Server/worlds/${worldName}/behavior_packs`, { recursive: true });
     }
@@ -110,8 +107,8 @@ async function start() {
     //Setting allowlist
     const whitelistData = JSON.parse(fs.readFileSync("./db/allowlist.json"))
     const toggleFeatures = JSON.parse(fs.readFileSync("./db/toggle_features.json"))
-    serverProperties.replace(/^allow-list=.*$/m, `allow-list=${toggleFeatures.allowlist ? 'true' : 'false'}`)
-    fs.writeFileSync("./Bedrock Server/server.properties", serverProperties, "utf8");
+    startup = startup.replace(/^allow-list=.*$/m, `allow-list=${toggleFeatures.allowlist ? 'true' : 'false'}`)
+    fs.writeFileSync("./Bedrock Server/server.properties", startup, "utf8");
     fs.writeFileSync("./Bedrock Server/allowlist.json", JSON.stringify(whitelistData, null, 2))
     
 
