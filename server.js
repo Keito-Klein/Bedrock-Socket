@@ -2,6 +2,7 @@ require("dotenv").config();
 const { spawn, execSync } = require("child_process");
 const WebSocket = require("ws");
 const extract = require("extract-zip");
+const axios = require("axios");
 const readline = require("readline");
 const fs = require("fs");
 const os = require("os");
@@ -32,8 +33,10 @@ async function start() {
                 /^emit-server-telemetry=.*$/m,
                 `emit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`
             );
+            fs.writeFileSync("./Bedrock Server/server.properties", serverProperties, "utf8");
         } else {
             serverProperties += `\nemit-server-telemetry=${process.env.TELEMETRY === 'true' ? 'true' : 'false'}`;
+            fs.writeFileSync("./Bedrock Server/server.properties", serverProperties, "utf8");
         }
 
     fs.writeFileSync("./Bedrock Server/server.properties", startup, "utf8");
@@ -103,6 +106,14 @@ async function start() {
         }
         fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/world_behavior_packs.json`, JSON.stringify(bhData, null, 2))
     }
+
+    //Setting allowlist
+    const whitelistData = JSON.parse(fs.readFileSync("./db/allowlist.json"))
+    const toggleFeatures = JSON.parse(fs.readFileSync("./db/toggle_features.json"))
+    serverProperties.replace(/^allow-list=.*$/m, `allow-list=${toggleFeatures.allowlist ? 'true' : 'false'}`)
+    fs.writeFileSync("./Bedrock Server/server.properties", serverProperties, "utf8");
+    fs.writeFileSync("./Bedrock Server/allowlist.json", JSON.stringify(whitelistData, null, 2))
+    
 
     console.log("✅ Configure complete. Starting server...");
     
@@ -184,9 +195,93 @@ async function start() {
         ws.isAlive = true;
         ws.on('pong', heartBeat);
 
-        ws.on("message", (message) => {
+        ws.on("message", async(message) => {
             console.log(`Received: ${message}`);
-    
+            const str = message.split(" ")
+            const command = str[0]
+            const method = str[1]
+            if(command === "whitelist") {
+                const rawGamertag = str.slice(2).join(" ");
+                const gamertag = rawGamertag.replace(/"/g, "");
+                switch(method) {
+                    case "add":
+                    case "remove":{
+                        const check = await axios.get(`https://mcprofile.io/api/v1/bedrock/gamertag/${encodeURIComponent(gamertag)}`);
+                        if(check.data.message) {
+                            console.error(`Player "${gamertag}" isn't register`)
+                            clients.forEach(ws => {
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send(`Player "${gamertag}" isn't register`);
+                                }
+                            });
+                            return;
+                        }
+                        const allowlistData = JSON.parse(fs.readFileSync("./db/allowlist.json"))
+                        if(method === "add") {
+                            if(allowlistData.some(player => player.name === gamertag)) {
+                                console.error(`Player "${gamertag}" is already in the allowlist`)
+                                clients.forEach(ws => {
+                                    if (ws.readyState === WebSocket.OPEN) {
+                                        ws.send(`Player "${gamertag}" is already in the allowlist`);
+                                    }
+                                });
+                                return;
+                            }
+                            allowlistData.push({
+                                ignoresPlayerLimit:false,
+                                name: gamertag
+                            })
+                            fs.writeFileSync("./db/allowlist.json", JSON.stringify(allowlistData, null, 2))
+                        } else if(method === "remove") {
+                            if(!allowlistData.some(player => player.name === gamertag)) {
+                                console.error(`Player "${gamertag}" isn't registered in the allowlist`)
+                                clients.forEach(ws => {
+                                    if (ws.readyState === WebSocket.OPEN) {
+                                        ws.send(`Player "${gamertag}" isn't registered in the allowlist`);
+                                    }
+                                });
+                                return;
+                            }
+                            const newData = allowlistData.filter(player => player.name !== gamertag);
+                            fs.writeFileSync("./db/allowlist.json", JSON.stringify(newData, null, 2))
+                        }
+                    }
+                    break
+
+                    case "on": {
+                        const toggleData = JSON.parse(fs.readFileSync("./db/toggle_features.json"));
+                        if(toggleData.allowlist) {
+                            console.error("Allowlist is already on.")
+                            clients.forEach(ws => {
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send("Allowlist is already on.");
+                                }
+                            });
+                            return;
+                        }
+                        toggleData.allowlist = true;
+                        fs.writeFileSync("./db/toggle_features.json", JSON.stringify(toggleData, null, 2))
+                    }
+                    break
+
+                    case "off": {
+                        const toggleData = JSON.parse(fs.readFileSync("./db/toggle_features.json"));
+                        if(!toggleData.allowlist) {
+                            console.error("Allowlist is already OFF.")
+                            clients.forEach(ws => {
+                                if (ws.readyState === WebSocket.OPEN) {
+                                    ws.send("Allowlist is already OFF.");
+                                }
+                            });
+                            return;
+                        }
+                        toggleData.allowlist = false;
+                        fs.writeFileSync("./db/toggle_features.json", JSON.stringify(toggleData, null, 2))
+                    }
+                    break
+                }
+
+            }
             bds.stdin.write(`${message}\n`);
         });
     
