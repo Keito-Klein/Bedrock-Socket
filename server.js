@@ -42,8 +42,8 @@ async function start() {
         fs.mkdirSync(`./Bedrock Server/worlds/${worldName}/behavior_packs`, { recursive: true });
     }
     try {
-        if(!fs.existsSync(`./Bedrock Server/behavior_packs/chatReceiver`)) await extract("./add-on/chatReceiver.zip", { dir: path.resolve(`./Bedrock Server/behavior_packs`) });
-        if(!fs.existsSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatReceiver`)) await extract("./add-on/chatReceiver.zip", { dir: path.resolve(`./Bedrock Server/worlds/${worldName}/behavior_packs`) });
+        if(!fs.existsSync(`./Bedrock Server/behavior_packs/chatLogger`)) await extract("./add-on/chatLogger.zip", { dir: path.resolve(`./Bedrock Server/behavior_packs`) });
+        if(!fs.existsSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger`)) await extract("./add-on/chatLogger.zip", { dir: path.resolve(`./Bedrock Server/worlds/${worldName}/behavior_packs`) });
         console.log("Chat Logger installed successfully.");
     } catch (err) {
         console.error("Failed to install Chat Logger:", err);
@@ -152,6 +152,13 @@ async function start() {
     function heartBeat() {
         this.isAlive = true;
     }
+
+    function normalizeWsMessage(message) {
+        if (Buffer.isBuffer(message)) return message.toString("utf8");
+        if (Array.isArray(message)) return Buffer.concat(message).toString("utf8");
+        if (message instanceof ArrayBuffer) return Buffer.from(message).toString("utf8");
+        return String(message);
+    }
     
     bds.stdout.on("data", (data) => {
         console.log(`BDS: ${data}`);
@@ -161,16 +168,16 @@ async function start() {
             if (data.toString().includes("@minecraft/server")) {
                 match = data.toString().match(/Current \[beta\] version is \[(?<version>[^\]]+)\]/);
                 if (!match || !match.groups) console.error("Failed to detect current version from log.");
-                manifest = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatReceiver/manifest.json`));
+                manifest = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`));
                 manifest.dependencies[0].version = match.groups.version
-                fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatReceiver/manifest.json`, JSON.stringify(manifest, null, 2));
+                fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`, JSON.stringify(manifest, null, 2));
             }
             if (data.toString().includes("@minecraft/server-ui")) {
                 match = data.toString().match(/Current \[beta\] version is \[(?<version>[^\]]+)\]/);
                 if (!match || !match.groups) console.error("Failed to detect current version from log.");
-                manifest = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatReceiver/manifest.json`));
+                manifest = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`));
                 manifest.dependencies[1].version = match.groups.version
-                fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatReceiver/manifest.json`, JSON.stringify(manifest, null, 2));
+                fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`, JSON.stringify(manifest, null, 2));
             }
         }
         
@@ -193,8 +200,9 @@ async function start() {
         ws.on('pong', heartBeat);
 
         ws.on("message", async(message) => {
-            console.log(`Received: ${message}`);
-            const str = message.split(" ")
+            const text = normalizeWsMessage(message);
+            console.log(`Received: ${text}`);
+            const str = text.split(" ")
             const command = str[0]
             const method = str[1]
             if(command === "whitelist") {
@@ -279,7 +287,7 @@ async function start() {
                 }
 
             }
-            bds.stdin.write(`${message}\n`);
+            bds.stdin.write(`${text}\n`);
         });
     
         ws.on("close", () => {
