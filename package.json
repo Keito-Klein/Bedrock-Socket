@@ -28,6 +28,7 @@
   "homepage": "https://github.com/Keito-Klein/Bedrock-Socket#readme",
   "dependencies": {
     "axios": "^1.13.1",
+    "chalk": "^4.1.2",
     "cheerio": "^1.1.2",
     "cli-progress": "^3.12.0",
     "dotenv": "^17.2.3",
