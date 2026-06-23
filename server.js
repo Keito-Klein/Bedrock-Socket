@@ -7,6 +7,7 @@ const readline = require("readline");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const chalk = require("chalk");
 const { autoUpdate } = require("./lib/auto-update.js");
 const port = process.env.WEBSOCKET_PORT || 3000;
 const auto_update = process.env.AUTO_UPDATER === 'true' || false;
@@ -44,11 +45,11 @@ async function start() {
     try {
         if(!fs.existsSync(`./Bedrock Server/behavior_packs/chatLogger`)) await extract("./add-on/chatLogger.zip", { dir: path.resolve(`./Bedrock Server/behavior_packs`) });
         if(!fs.existsSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger`)) await extract("./add-on/chatLogger.zip", { dir: path.resolve(`./Bedrock Server/worlds/${worldName}/behavior_packs`) });
-        console.log("Chat Logger installed successfully.");
+        console.log(chalk.greenBright("Chat Logger installed successfully."));
     } catch (err) {
-        console.error("Failed to install Chat Logger:", err);
+        console.error(chalk.bold.redBright("Failed to install Chat Logger:"), err);
     }
-    console.log("⚙ Configure chat logger...")
+    console.log("⚙", chalk.italic.yellowBright("Configure chat logger..."))
     if(fs.existsSync(`./Bedrock Server/worlds/${worldName}/world_behavior_pack_history.json`)) {
         bhHistory = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/world_behavior_pack_history.json`, "utf8"));
 
@@ -112,7 +113,7 @@ async function start() {
     fs.writeFileSync("./Bedrock Server/allowlist.json", JSON.stringify(whitelistData, null, 2))
     
 
-    console.log("✅ Configure complete. Starting server...");
+    console.log("✅", chalk.bold.greenBright("Configure complete. Starting server..."));
     
     // Run Bedrock Server
     let bds;
@@ -142,7 +143,7 @@ async function start() {
                 }
             });
         }else {
-            console.info("[EXECUTE]", input)
+            console.info(chalk.green("[EXECUTE]"), input)
             bds.stdin.write(input + "\n")
         }
     })
@@ -161,20 +162,20 @@ async function start() {
     }
     
     bds.stdout.on("data", (data) => {
-        console.log(`BDS: ${data}`);
+        console.log(chalk.bold.greenBright("BDS:"), data.toString());
 
         //error detection
         if (data.toString().includes("requested invalid version") && data.toString().includes("Chat_Receiver")) {
             if (data.toString().includes("@minecraft/server")) {
                 match = data.toString().match(/Current \[beta\] version is \[(?<version>[^\]]+)\]/);
-                if (!match || !match.groups) console.error("Failed to detect current version from log.");
+                if (!match || !match.groups) console.error(chalk.redBright("Failed to detect current version from log."));
                 manifest = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`));
                 manifest.dependencies[0].version = match.groups.version
                 fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`, JSON.stringify(manifest, null, 2));
             }
             if (data.toString().includes("@minecraft/server-ui")) {
                 match = data.toString().match(/Current \[beta\] version is \[(?<version>[^\]]+)\]/);
-                if (!match || !match.groups) console.error("Failed to detect current version from log.");
+                if (!match || !match.groups) console.error(chalk.redBright("Failed to detect current version from log."));
                 manifest = JSON.parse(fs.readFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`));
                 manifest.dependencies[1].version = match.groups.version
                 fs.writeFileSync(`./Bedrock Server/worlds/${worldName}/behavior_packs/chatLogger/manifest.json`, JSON.stringify(manifest, null, 2));
@@ -189,11 +190,11 @@ async function start() {
     });
     
     bds.stderr.on("data", (data) => {
-        console.error(`Error: ${data}`);
+        console.error(chalk.redBright("Error:"), data.toString());
     });
     
     wss.on("connection", (ws, req) => {
-        console.log("Client connected: " + req.socket.remoteAddress);
+        console.log(chalk.bold.greenBright("Client connected to WebSocket:"), req.socket.remoteAddress);
         clients.add(ws);
     
         ws.isAlive = true;
@@ -201,7 +202,7 @@ async function start() {
 
         ws.on("message", async(message) => {
             const text = normalizeWsMessage(message);
-            console.log(`Received: ${text}`);
+            console.log(chalk.bold.greenBright("[Received]:"), text);
             const str = text.split(" ")
             const command = str[0]
             const method = str[1]
@@ -213,7 +214,7 @@ async function start() {
                     case "remove":{
                         const check = await axios.get(`https://mcprofile.io/api/v1/bedrock/gamertag/${encodeURIComponent(gamertag)}`);
                         if(check.data.message) {
-                            console.error(`Player "${gamertag}" isn't register`)
+                            console.error(chalk.keyword("orange")(`Player "${gamertag}" isn't register`))
                             clients.forEach(ws => {
                                 if (ws.readyState === WebSocket.OPEN) {
                                     ws.send(`Player "${gamertag}" isn't register`);
@@ -224,7 +225,7 @@ async function start() {
                         const allowlistData = JSON.parse(fs.readFileSync("./db/allowlist.json"))
                         if(method === "add") {
                             if(allowlistData.some(player => player.name === gamertag)) {
-                                console.error(`Player "${gamertag}" is already in the allowlist`)
+                                console.error(chalk.keyword("orange")(`Player "${gamertag}" is already in the allowlist`))
                                 clients.forEach(ws => {
                                     if (ws.readyState === WebSocket.OPEN) {
                                         ws.send(`Player "${gamertag}" is already in the allowlist`);
@@ -239,7 +240,7 @@ async function start() {
                             fs.writeFileSync("./db/allowlist.json", JSON.stringify(allowlistData, null, 2))
                         } else if(method === "remove") {
                             if(!allowlistData.some(player => player.name === gamertag)) {
-                                console.error(`Player "${gamertag}" isn't registered in the allowlist`)
+                                console.error(chalk.keyword("orange")(`Player "${gamertag}" isn't registered in the allowlist`))
                                 clients.forEach(ws => {
                                     if (ws.readyState === WebSocket.OPEN) {
                                         ws.send(`Player "${gamertag}" isn't registered in the allowlist`);
@@ -256,7 +257,7 @@ async function start() {
                     case "on": {
                         const toggleData = JSON.parse(fs.readFileSync("./db/toggle_features.json"));
                         if(toggleData.allowlist) {
-                            console.error("Allowlist is already on.")
+                            console.error(chalk.keyword("orange")("Allowlist is already on."))
                             clients.forEach(ws => {
                                 if (ws.readyState === WebSocket.OPEN) {
                                     ws.send("Allowlist is already on.");
@@ -272,7 +273,7 @@ async function start() {
                     case "off": {
                         const toggleData = JSON.parse(fs.readFileSync("./db/toggle_features.json"));
                         if(!toggleData.allowlist) {
-                            console.error("Allowlist is already OFF.")
+                            console.error(chalk.keyword("orange")("Allowlist is already OFF."))
                             clients.forEach(ws => {
                                 if (ws.readyState === WebSocket.OPEN) {
                                     ws.send("Allowlist is already OFF.");
@@ -291,19 +292,19 @@ async function start() {
         });
     
         ws.on("close", () => {
-            console.log("Client disconnected");
+            console.log(chalk.bold.redBright("Client disconnected"));
             clients.delete(ws);
         });
 
         ws.on("error", (error) => {
-            console.error("WebSocket error:", error.message);
+            console.error(chalk.bold.redBright("WebSocket error:"), error.message);
         });
     });
 
     const interval = setInterval(() => {
         wss.clients.forEach((ws) => {
             if(ws.isAlive === false) {
-                console.log("Terminating unresponsive client");
+                console.log(chalk.italic.redBright("Terminating unresponsive client"));
                 return ws.terminate();
             }
             ws.isAlive = false;
@@ -315,7 +316,7 @@ async function start() {
         clearInterval(interval);
     })
     
-    console.log("WebSocket running on port: " + port);
+    console.log(chalk.bold.greenBright("WebSocket running on port:"), chalk.yellowBright(port));
 }
 
 start();
